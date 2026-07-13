@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePlaceRequest;
+use App\Http\Requests\UpdatePlaceRequest;
 use App\Http\Resources\PlaceResource;
 use App\Models\Place;
 use Illuminate\Http\Request;
@@ -33,9 +34,11 @@ class PlaceController extends Controller
         return new PlaceResource($place);
     }
 
-    public function update(Request $request, Place $place)
+    public function update(UpdatePlaceRequest $request, Place $place)
     {
-        //
+        $place->update($request->validated());
+
+        return new PlaceResource($place);
     }
 
     public function destroy(Place $place)
