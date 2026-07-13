@@ -14,5 +14,6 @@ if ! grep -q "^APP_KEY=base64" .env 2>/dev/null; then
 fi
 
 php artisan migrate --force
+php artisan l5-swagger:generate
 
 exec php artisan serve --host=0.0.0.0 --port=8000
