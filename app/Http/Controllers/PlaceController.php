@@ -6,12 +6,15 @@ use App\Http\Requests\StorePlaceRequest;
 use App\Http\Requests\UpdatePlaceRequest;
 use App\Http\Resources\PlaceResource;
 use App\Models\Place;
+use App\Services\PlaceService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use OpenApi\Attributes as OA;
 
 class PlaceController extends Controller
 {
+    public function __construct(private readonly PlaceService $places) {}
+
     #[OA\Get(
         path: '/api/places',
         tags: ['Places'],
@@ -28,9 +31,7 @@ class PlaceController extends Controller
     )]
     public function index(Request $request)
     {
-        $places = Place::query()
-            ->when($request->filled('name'), fn ($query) => $query->where('name', 'ilike', "%{$request->string('name')}%"))
-            ->paginate(15);
+        $places = $this->places->list($request->string('name')->value() ?: null);
 
         return PlaceResource::collection($places);
     }
@@ -40,10 +41,9 @@ class PlaceController extends Controller
         tags: ['Places'],
         summary: 'Cria um lugar',
         requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(
-            required: ['name', 'slug', 'city', 'state'],
+            required: ['name', 'city', 'state'],
             properties: [
                 new OA\Property(property: 'name', type: 'string', example: 'Praia Mole'),
-                new OA\Property(property: 'slug', type: 'string', example: 'praia-mole'),
                 new OA\Property(property: 'city', type: 'string', example: 'Florianópolis'),
                 new OA\Property(property: 'state', type: 'string', example: 'SC'),
             ]
@@ -57,7 +57,7 @@ class PlaceController extends Controller
     )]
     public function store(StorePlaceRequest $request)
     {
-        $place = Place::create($request->validated());
+        $place = $this->places->create($request->validated());
 
         return (new PlaceResource($place))
             ->response()
@@ -87,10 +87,9 @@ class PlaceController extends Controller
         summary: 'Atualiza um lugar',
         parameters: [new OA\Parameter(name: 'place', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
         requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(
-            required: ['name', 'slug', 'city', 'state'],
+            required: ['name', 'city', 'state'],
             properties: [
                 new OA\Property(property: 'name', type: 'string', example: 'Praia Mole'),
-                new OA\Property(property: 'slug', type: 'string', example: 'praia-mole'),
                 new OA\Property(property: 'city', type: 'string', example: 'Florianópolis'),
                 new OA\Property(property: 'state', type: 'string', example: 'SC'),
             ]
@@ -105,7 +104,7 @@ class PlaceController extends Controller
     )]
     public function update(UpdatePlaceRequest $request, Place $place)
     {
-        $place->update($request->validated());
+        $place = $this->places->update($place, $request->validated());
 
         return new PlaceResource($place);
     }
@@ -122,7 +121,7 @@ class PlaceController extends Controller
     )]
     public function destroy(Place $place)
     {
-        $place->delete();
+        $this->places->delete($place);
 
         return response()->noContent();
     }
