@@ -31,6 +31,13 @@ class ShowPlaceTest extends TestCase
     {
         $response = $this->getJson('/api/places/999');
 
+        $response->assertNotFound()->assertJson(['message' => 'Recurso não encontrado.']);
+    }
+
+    public function test_it_returns_404_for_a_non_numeric_id(): void
+    {
+        $response = $this->getJson('/api/places/abc');
+
         $response->assertNotFound();
     }
 }

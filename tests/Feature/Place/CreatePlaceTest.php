@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Place;
 
+use App\Models\Place;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,7 +14,6 @@ class CreatePlaceTest extends TestCase
     {
         $payload = [
             'name' => 'Lagoinha do leste',
-            'slug' => 'lagoinha-do-leste',
             'city' => 'Florianópolis',
             'state' => 'SC',
         ];
@@ -21,16 +21,15 @@ class CreatePlaceTest extends TestCase
         $response = $this->postJson('/api/places', $payload);
 
         $response->assertCreated()->assertJson([
-            'data' => $payload,
+            'data' => $payload + ['slug' => 'lagoinha-do-leste'],
         ]);
 
-        $this->assertDatabaseHas('places', $payload);
+        $this->assertDatabaseHas('places', $payload + ['slug' => 'lagoinha-do-leste']);
     }
 
     public function test_it_requires_name_to_create_a_place(): void
     {
         $response = $this->postJson('/api/places', [
-            'slug' => 'praia-mole',
             'city' => 'Florianópolis',
             'state' => 'SC',
         ]);
@@ -42,7 +41,6 @@ class CreatePlaceTest extends TestCase
     {
         $response = $this->postJson('/api/places', [
             'name' => 'Praia Mole',
-            'slug' => 'praia-mole',
             'city' => 'Florianópolis',
             'state' => 'XX',
         ]);
@@ -50,35 +48,31 @@ class CreatePlaceTest extends TestCase
         $response->assertUnprocessable()->assertJsonValidationErrors('state');
     }
 
-    public function test_it_rejects_a_duplicate_slug(): void
+    public function test_it_generates_a_slug_from_the_name(): void
     {
-        $existing = [
-            'name' => 'Praia Mole',
-            'slug' => 'praia-mole',
-            'city' => 'Florianópolis',
-            'state' => 'SC',
-        ];
-        $this->postJson('/api/places', $existing)->assertCreated();
-
         $response = $this->postJson('/api/places', [
-            'name' => 'Praia Mole 2',
-            'slug' => 'praia-mole',
+            'name' => 'Praia Mole',
             'city' => 'Florianópolis',
             'state' => 'SC',
         ]);
 
-        $response->assertUnprocessable()->assertJsonValidationErrors('slug');
+        $response->assertCreated()->assertJson([
+            'data' => ['slug' => 'praia-mole'],
+        ]);
     }
 
-    public function test_it_rejects_a_slug_that_is_not_kebab_case(): void
+    public function test_it_generates_a_unique_slug_when_the_name_already_exists(): void
     {
+        Place::factory()->create(['name' => 'Praia Mole', 'slug' => 'praia-mole']);
+
         $response = $this->postJson('/api/places', [
             'name' => 'Praia Mole',
-            'slug' => 'Praia Mole',
             'city' => 'Florianópolis',
             'state' => 'SC',
         ]);
 
-        $response->assertUnprocessable()->assertJsonValidationErrors('slug');
+        $response->assertCreated()->assertJson([
+            'data' => ['slug' => 'praia-mole-2'],
+        ]);
     }
 }

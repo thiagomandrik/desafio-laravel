@@ -19,7 +19,6 @@ class UpdatePlaceTest extends TestCase
 
         $response = $this->putJson("/api/places/{$place->id}", [
             'name' => 'Praia Mole Atualizada',
-            'slug' => 'praia-mole-atualizada',
             'city' => 'Florianópolis',
             'state' => 'SC',
         ]);
@@ -28,14 +27,12 @@ class UpdatePlaceTest extends TestCase
             'data' => [
                 'id' => $place->id,
                 'name' => 'Praia Mole Atualizada',
-                'slug' => 'praia-mole-atualizada',
             ],
         ]);
 
         $this->assertDatabaseHas('places', [
             'id' => $place->id,
             'name' => 'Praia Mole Atualizada',
-            'slug' => 'praia-mole-atualizada',
         ]);
     }
 
@@ -43,48 +40,30 @@ class UpdatePlaceTest extends TestCase
     {
         $response = $this->putJson('/api/places/999', [
             'name' => 'Praia Mole',
-            'slug' => 'praia-mole',
             'city' => 'Florianópolis',
             'state' => 'SC',
         ]);
 
-        $response->assertNotFound();
+        $response->assertNotFound()->assertJson(['message' => 'Recurso não encontrado.']);
     }
 
-    public function test_it_allows_keeping_the_same_slug_when_updating(): void
+    public function test_it_does_not_change_the_slug_when_updating_the_name(): void
     {
         $place = Place::factory()->create([
             'name' => 'Praia Mole',
             'slug' => 'praia-mole',
-            'city' => 'Florianópolis',
         ]);
 
         $response = $this->putJson("/api/places/{$place->id}", [
-            'name' => 'Praia Mole',
-            'slug' => 'praia-mole',
-            'city' => 'Palhoça',
+            'name' => 'Praia Mole Atualizada',
+            'city' => 'Florianópolis',
             'state' => 'SC',
         ]);
 
         $response->assertOk()->assertJson([
-            'data' => ['slug' => 'praia-mole', 'city' => 'Palhoça'],
+            'data' => ['slug' => 'praia-mole'],
         ]);
 
-        $this->assertDatabaseHas('places', ['id' => $place->id, 'city' => 'Palhoça']);
-    }
-
-    public function test_it_rejects_updating_to_a_slug_used_by_another_place(): void
-    {
-        Place::factory()->create(['name' => 'Praia Mole', 'slug' => 'praia-mole']);
-        $place = Place::factory()->create(['name' => 'Praia da Joaquina', 'slug' => 'praia-da-joaquina']);
-
-        $response = $this->putJson("/api/places/{$place->id}", [
-            'name' => 'Praia da Joaquina',
-            'slug' => 'praia-mole',
-            'city' => 'Florianópolis',
-            'state' => 'SC',
-        ]);
-
-        $response->assertUnprocessable()->assertJsonValidationErrors('slug');
+        $this->assertDatabaseHas('places', ['id' => $place->id, 'slug' => 'praia-mole']);
     }
 }

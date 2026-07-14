@@ -24,7 +24,7 @@ class DeletePlaceTest extends TestCase
     {
         $response = $this->deleteJson('/api/places/999');
 
-        $response->assertNotFound();
+        $response->assertNotFound()->assertJson(['message' => 'Recurso não encontrado.']);
     }
 
     public function test_a_deleted_place_no_longer_appears_in_show_or_list(): void

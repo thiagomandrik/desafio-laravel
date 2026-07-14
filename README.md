@@ -84,7 +84,7 @@ Todas as requisições/respostas usam `application/json`. URL base: `http://loca
 |--------------|--------|---------------------------------------------------------------|
 | `id`         | int    | Gerado automaticamente                                        |
 | `name`       | string | Obrigatório                                                   |
-| `slug`       | string | Obrigatório, único, em kebab-case (ex.: `praia-mole`)          |
+| `slug`       | string | Gerado automaticamente a partir do `name` (kebab-case, único; não é enviado pelo cliente). Se o nome já existir, recebe um sufixo incremental (`praia-mole`, `praia-mole-2`, ...). Não muda em atualizações posteriores do `name`. |
 | `city`       | string | Obrigatório                                                   |
 | `state`      | string | Obrigatório, sigla de UF com 2 letras (ex.: `SC`)              |
 | `created_at` | string | Timestamp ISO 8601                                             |
@@ -98,7 +98,7 @@ Todas as requisições/respostas usam `application/json`. URL base: `http://loca
 ```bash
 curl -X POST http://localhost:8000/api/places \
   -H "Content-Type: application/json" \
-  -d '{"name":"Praia Mole","slug":"praia-mole","city":"Florianópolis","state":"SC"}'
+  -d '{"name":"Praia Mole","city":"Florianópolis","state":"SC"}'
 ```
 
 ```json
@@ -133,7 +133,7 @@ curl http://localhost:8000/api/places/1
 ```bash
 curl -X PUT http://localhost:8000/api/places/1 \
   -H "Content-Type: application/json" \
-  -d '{"name":"Praia Mole","slug":"praia-mole","city":"Florianópolis","state":"SC"}'
+  -d '{"name":"Praia Mole","city":"Florianópolis","state":"SC"}'
 ```
 
 **Remover um lugar**
@@ -154,5 +154,19 @@ Um erro de validação (campos ausentes/inválidos, por exemplo) retorna `422` c
 }
 ```
 
-Um recurso inexistente retorna `404`.
+Um recurso inexistente, ou uma rota/id inválido (ex.: `/api/places/abc`), retorna `404` com uma mensagem limpa e consistente:
+
+```json
+{
+  "message": "Recurso não encontrado."
+}
+```
+
+## Arquitetura
+
+- **`PlaceController`** só traduz HTTP: recebe a request, delega pro service, devolve o resource/status code, sem regra de negócio.
+- **`PlaceService`** (`app/Services/PlaceService.php`) concentra a orquestração do CRUD
+- **`Place` (model)** aplica a regra de geração do slug (evento `creating`), garantindo que ela valha em qualquer ponto de entrada (API, seeders, tinker), não só no controller.
+- **`ApiExceptionRenderer`** (`app/Exceptions/ApiExceptionRenderer.php`), registrado em `bootstrap/app.php`, padroniza as respostas de erro da API: 404 limpo e um fallback genérico para qualquer exceção inesperada, sem stack trace.
+
 
