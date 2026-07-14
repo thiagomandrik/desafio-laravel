@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\IndexPlaceRequest;
 use App\Http\Requests\StorePlaceRequest;
 use App\Http\Requests\UpdatePlaceRequest;
 use App\Http\Resources\PlaceResource;
 use App\Models\Place;
 use App\Services\PlaceService;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use OpenApi\Attributes as OA;
 
@@ -29,9 +29,9 @@ class PlaceController extends Controller
             )),
         ]
     )]
-    public function index(Request $request)
+    public function index(IndexPlaceRequest $request)
     {
-        $places = $this->places->list($request->string('name')->value() ?: null);
+        $places = $this->places->list($request->validated('name'));
 
         return PlaceResource::collection($places);
     }

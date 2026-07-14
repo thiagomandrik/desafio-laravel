@@ -69,6 +69,8 @@ http://localhost:8000/docs
 
 Todas as requisições/respostas usam `application/json`. URL base: `http://localhost:8000/api`.
 
+Os filtros do `GET /places` também são validados (`name` até 255 caracteres, `page` inteiro ≥ 1); valores inválidos retornam `422`.
+
 | Método | Endpoint            | Descrição                                              |
 |--------|---------------------|----------------------------------------------------------|
 | GET    | `/places`           | Lista lugares (paginado, 15 por página)                  |
