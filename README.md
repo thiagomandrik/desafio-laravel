@@ -1,58 +1,158 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Desafio Backend — Places API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Uma API JSON simples para gerenciar **lugares** (CRUD), construída com Laravel 12 e PostgreSQL, como parte do desafio de desenvolvedor backend da SGBr.
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.4 / Laravel 12
+- PostgreSQL 16
+- Docker & Docker Compose
+- L5-Swagger (documentação OpenAPI)
+- PHPUnit (testes de feature)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Requisitos
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Docker
+- Docker Compose
 
-## Learning Laravel
+Não é necessário instalar PHP/Composer/PostgreSQL localmente — tudo roda dentro dos containers.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Como executar
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone https://github.com/thiagomandrik/desafio-laravel.git
+cd desafio-laravel
+cp .env.example .env
+docker compose up -d --build
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Na primeira inicialização, o entrypoint do container `app` faz automaticamente:
 
-## Contributing
+1. Instala as dependências do Composer (se `vendor/` não existir);
+2. Copia `.env.example` para `.env` (se não existir) e gera a `APP_KEY`;
+3. Roda as migrations (`php artisan migrate --force`);
+4. Gera a documentação Swagger/OpenAPI;
+5. Sobe a API em `http://localhost:8000`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+O serviço `pgsql` cria dois bancos na primeira execução: `desafio_laravel` (aplicação) e `desafio_laravel_testing` (testes), via `docker/postgres/init-testing-db.sh`.
 
-## Code of Conduct
+Para conferir se está tudo no ar:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+curl http://localhost:8000/api/places
+# {"data":[],"links":{...},"meta":{...}}
+```
 
-## Security Vulnerabilities
+Para parar o ambiente:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+docker compose down
+```
 
-## License
+## Rodando os testes
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+docker compose exec app php artisan test
+```
+
+A suíte usa `RefreshDatabase` contra o banco `desafio_laravel_testing` (ver `phpunit.xml`) e cobre criação, listagem/filtro, exibição, atualização e remoção — incluindo erros de validação e o comportamento de soft delete.
+
+## Documentação da API (Swagger)
+
+A documentação interativa OpenAPI fica disponível com a aplicação no ar:
+
+```
+http://localhost:8000/docs
+```
+
+## Endpoints
+
+Todas as requisições/respostas usam `application/json`. URL base: `http://localhost:8000/api`.
+
+| Método | Endpoint            | Descrição                                              |
+|--------|---------------------|----------------------------------------------------------|
+| GET    | `/places`           | Lista lugares (paginado, 15 por página)                  |
+| GET    | `/places?name=...`  | Lista lugares, filtrando por nome (parcial, case-insensitive) |
+| GET    | `/places/{id}`      | Exibe um lugar específico                                |
+| POST   | `/places`           | Cria um lugar                                            |
+| PUT    | `/places/{id}`      | Atualiza um lugar                                        |
+| DELETE | `/places/{id}`      | Remove um lugar (soft delete)                            |
+
+### Campos de um lugar
+
+| Campo        | Tipo   | Observações                                                 |
+|--------------|--------|---------------------------------------------------------------|
+| `id`         | int    | Gerado automaticamente                                        |
+| `name`       | string | Obrigatório                                                   |
+| `slug`       | string | Obrigatório, único, em kebab-case (ex.: `praia-mole`)          |
+| `city`       | string | Obrigatório                                                   |
+| `state`      | string | Obrigatório, sigla de UF com 2 letras (ex.: `SC`)              |
+| `created_at` | string | Timestamp ISO 8601                                             |
+| `updated_at` | string | Timestamp ISO 8601                                             |
+| `deleted_at` | string | Timestamp ISO 8601, `null` a menos que tenha sido removido     |
+
+### Exemplos
+
+**Criar um lugar**
+
+```bash
+curl -X POST http://localhost:8000/api/places \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Praia Mole","slug":"praia-mole","city":"Florianópolis","state":"SC"}'
+```
+
+```json
+{
+  "data": {
+    "id": 1,
+    "name": "Praia Mole",
+    "slug": "praia-mole",
+    "city": "Florianópolis",
+    "state": "SC",
+    "created_at": "2026-07-14T12:00:00.000000Z",
+    "updated_at": "2026-07-14T12:00:00.000000Z",
+    "deleted_at": null
+  }
+}
+```
+
+**Listar / filtrar por nome**
+
+```bash
+curl "http://localhost:8000/api/places?name=mole"
+```
+
+**Exibir um lugar**
+
+```bash
+curl http://localhost:8000/api/places/1
+```
+
+**Atualizar um lugar**
+
+```bash
+curl -X PUT http://localhost:8000/api/places/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Praia Mole","slug":"praia-mole","city":"Florianópolis","state":"SC"}'
+```
+
+**Remover um lugar**
+
+```bash
+curl -X DELETE http://localhost:8000/api/places/1
+```
+
+Um erro de validação (campos ausentes/inválidos, por exemplo) retorna `422` com um objeto `errors`:
+
+```json
+{
+  "message": "The name field is required. (and 1 more error)",
+  "errors": {
+    "name": ["The name field is required."],
+    "state": ["The selected state is invalid."]
+  }
+}
+```
+
+Um recurso inexistente retorna `404`.
+
